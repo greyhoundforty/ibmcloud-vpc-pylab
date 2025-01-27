@@ -1,13 +1,12 @@
 import os
+import httpx
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 from ibm_cloud_sdk_core import ApiException
+from tamga import Tamga
 
-ibmcloud_api_key = os.environ.get("IBMCLOUD_API_KEY")
-if not ibmcloud_api_key:
-    raise ValueError("IBMCLOUD_API_KEY environment variable not found")
+logger = Tamga(logToJSON=True, logToConsole=True)
 
-
-def ibm_auth_client():
+def ibm_auth_client(ibmcloud_api_key):
     try:
         authenticator = IAMAuthenticator(ibmcloud_api_key)
         return authenticator
@@ -48,3 +47,31 @@ def create_vpc(vpc_name, region, vpc_resource_group_id):
     new_vpc_id = vpc["id"]
     print(new_vpc_id)
     return vpc
+
+
+
+def create_tailscale_key(token, tailnet_id):
+    url = f'https://api.tailscale.com/api/v2/tailnet/{tailnet_id}/keys?all=true'
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "capabilities": {
+            "devices": {
+                "create": {
+                    "reusable": True,
+                    "ephemeral": False,
+                    "preauthorized": True,
+                    "tags": [
+                        "tag:rst"
+                    ]
+                }
+            }
+        },
+        "expirySeconds": 86400,
+        "description": "Labme access"
+    }
+
+    response = httpx.post(url, headers=headers, json=data)
+    return response.json()
